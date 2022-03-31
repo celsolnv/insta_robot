@@ -9,8 +9,6 @@ async function delay(time) {
     setTimeout(resolve, time)
   })
 }
-
-
 async function login(page) {
   await page.focus("input[name=username]")
   await page.keyboard.type(process.env.INSTA_USERNAME)
@@ -23,7 +21,23 @@ async function login(page) {
   ]);
 
 }
-
+async function like(page) {
+  await page.click('article section:nth-child(1) span:nth-child(1) > button:nth-child(1)')
+}
+async function comment(page, message) {
+  await page.focus("form textarea")
+  await page.keyboard.type(message)
+  await page.click('form button[type=submit]')
+}
+async function followAfterUnfollow(page) {
+  await page.click('header button') //follow
+  while (await page.$eval("header button div", el => el.textContent) != "Following") {
+    delay(500)
+  }
+  await page.click('header button') //unfollow
+  await page.waitForSelector("div[role=dialog] button")
+  await page.click('div[role=dialog] button') //confirm unfollow
+}
 async function run() {
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
@@ -38,27 +52,24 @@ async function run() {
     await page.waitForSelector("article img")
     const linksMostRecent = await page.evaluate(() => {
       const ancoras = document.querySelectorAll("article > div:nth-child(3) a")
-      console.log(ancoras)
-
       const imageLinks = [...ancoras]
-
       const links = imageLinks.map(link => (
         link.href
       ))
-
       return links
 
     })
     for (const link of linksMostRecent) {
       await page.goto(link)
       await page.waitForSelector("svg[aria-label=Like]");
-      await page.click('article section:nth-child(1) span:nth-child(1) > button:nth-child(1)') //like button
-      await delay(2000)
+
+      await like(page)
+      // await comment(page, hashtag)
+      // await delay(1500)
+      await followAfterUnfollow(page)
+
     }
-
-
   }
-
   await browser.close();
 }
 run()
