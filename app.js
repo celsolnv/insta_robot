@@ -1,45 +1,19 @@
 import puppeteer from "puppeteer";
 import dotenv from 'dotenv'
+import { v4 as uuid } from "uuid";
+
 import { hashtagsProgrammer as hashtags } from './hashtags.js'
+import { shuffle, delay } from './utils.js'
+import { login, like, comment, followAfterUnfollow } from './services.js'
 
 dotenv.config({})
 
-async function delay(time) {
-  await new Promise((resolve, reject) => {
-    setTimeout(resolve, time)
-  })
-}
-async function login(page) {
-  await page.focus("input[name=username]")
-  await page.keyboard.type(process.env.INSTA_USERNAME)
-  await page.focus("input[name=password]")
-  await page.keyboard.type(process.env.INSTA_PASSWORD)
-
-  await Promise.all([
-    page.click('button[type=submit]'),
-    page.waitForNavigation()
-  ]);
-
-}
-async function like(page) {
-  await page.click('article section:nth-child(1) span:nth-child(1) > button:nth-child(1)')
-}
-async function comment(page, message) {
-  await page.focus("form textarea")
-  await page.keyboard.type(message)
-  await page.click('form button[type=submit]')
-}
-async function followAfterUnfollow(page) {
-  await page.click('header button') //follow
-  while (await page.$eval("header button div", el => el.textContent) != "Following") {
-    delay(500)
-  }
-  await page.click('header button') //unfollow
-  await page.waitForSelector("div[role=dialog] button")
-  await page.click('div[role=dialog] button') //confirm unfollow
-}
 async function run() {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({
+    headless: false, defaultViewport: null, args: [
+      '--window-size=1920,1080',
+    ],
+  });
   const page = await browser.newPage();
   await page.goto('https://www.instagram.com/accounts/login/');
 
@@ -47,7 +21,8 @@ async function run() {
 
   await login(page)
 
-  for (const hashtag of hashtags) {
+  const hashtagsShuffle = shuffle(hashtags)
+  for (const hashtag of hashtagsShuffle) {
     await page.goto(`https://www.instagram.com/explore/tags/${hashtag}/`)
     await page.waitForSelector("article img")
     const linksMostRecent = await page.evaluate(() => {
@@ -60,8 +35,9 @@ async function run() {
 
     })
     for (const link of linksMostRecent) {
-      await page.goto(link)
-      await page.waitForSelector("svg[aria-label=Like]");
+      await page.goto(link, { waitUntil: 'networkidle0' })
+      await page.screenshot({ path: `post-${uuid()}.png` });
+      // await page.screenshot({ path: `post-${uuid()}.png`, fullPage: true });
 
       await like(page)
       // await comment(page, hashtag)
