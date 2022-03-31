@@ -4,7 +4,7 @@ import { v4 as uuid } from "uuid";
 
 import { hashtagsProgrammer as hashtags } from './hashtags.js'
 import { shuffle, delay } from './utils.js'
-import { login, like, comment, followAfterUnfollow } from './services.js'
+import { login, like, comment, followAfterUnfollow } from '../services.js'
 
 dotenv.config({})
 
